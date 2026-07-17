@@ -1,17 +1,28 @@
-node_modules/
-frontend/node_modules/
-
-.next/
-frontend/.next/
-
+# Python
 .venv/
 __pycache__/
 *.pyc
 
+# Node
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+
+# Environment
 .env
 .env.local
 
-backend.zip
-frontend.zip
+# Model weights
+backend/weights/
+backend/gfpgan/weights/
+*.onnx
+*.pth
+*.ckpt
+*.safetensors
 
+# Uploads
 uploads/
+
+# Archives
+*.zip
