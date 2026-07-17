@@ -1,0 +1,129 @@
+services:
+
+  # ── MongoDB ─────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI backend ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_ALWAYS_EAGER=False
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - FORCE_MOCK_MODEL=${FORCE_MOCK_MODEL:-false}
+      - DEBUG=${DEBUG:-true}
+      - LCM_STEPS=${LCM_STEPS:-8}
+      - LCM_GUIDANCE_SCALE=${LCM_GUIDANCE_SCALE:-1.9}
+      - DEFAULT_STRENGTH=${DEFAULT_STRENGTH:-0.7}
+      - SCENE_STRENGTH=${SCENE_STRENGTH:-0.85}
+      - USE_IP_ADAPTER=${USE_IP_ADAPTER:-true}
+      - IP_ADAPTER_SCALE=${IP_ADAPTER_SCALE:-0.8}
+      - USE_FACEID_ADAPTER=${USE_FACEID_ADAPTER:-true}
+      - INSIGHTFACE_MODEL_PACK=${INSIGHTFACE_MODEL_PACK:-buffalo_l}
+      - USE_FACE_RESTORATION=${USE_FACE_RESTORATION:-true}
+      - USE_UPSCALER=${USE_UPSCALER:-true}
+      - UPSCALE_FACTOR=${UPSCALE_FACTOR:-2}
+      - USE_SAMPLE_AS_BASE=${USE_SAMPLE_AS_BASE:-true}
+      - OUTPUT_IMAGE_SIZE=${OUTPUT_IMAGE_SIZE:-512}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./img_prompt.json:/img_prompt.json:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+
+  # ── Celery worker ────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+
+    # Confirmed working: `docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi`
+    gpus: all
+
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_ALWAYS_EAGER=False
+      - FORCE_MOCK_MODEL=false
+      - DEVICE=${DEVICE:-cuda}
+      - TORCH_DTYPE=${TORCH_DTYPE:-float16}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - DEBUG=${DEBUG:-true}
+      - LCM_STEPS=${LCM_STEPS:-8}
+      - LCM_GUIDANCE_SCALE=${LCM_GUIDANCE_SCALE:-1.9}
+      - DEFAULT_STRENGTH=${DEFAULT_STRENGTH:-0.7}
+      - SCENE_STRENGTH=${SCENE_STRENGTH:-0.85}
+      - USE_IP_ADAPTER=${USE_IP_ADAPTER:-true}
+      - IP_ADAPTER_SCALE=${IP_ADAPTER_SCALE:-0.8}
+      - USE_FACEID_ADAPTER=${USE_FACEID_ADAPTER:-true}
+      - INSIGHTFACE_MODEL_PACK=${INSIGHTFACE_MODEL_PACK:-buffalo_l}
+      - USE_FACE_RESTORATION=${USE_FACE_RESTORATION:-true}
+      - USE_UPSCALER=${USE_UPSCALER:-true}
+      - UPSCALE_FACTOR=${UPSCALE_FACTOR:-2}
+      - USE_SAMPLE_AS_BASE=${USE_SAMPLE_AS_BASE:-true}
+      - OUTPUT_IMAGE_SIZE=${OUTPUT_IMAGE_SIZE:-512}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./img_prompt.json:/img_prompt.json:ro
+      - hf_cache:/root/.cache/huggingface
+    command: celery -A app.queue.celery_app.celery_app worker --loglevel=info --pool=solo
+
+  # ── Next.js frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+  hf_cache:

@@ -1,0 +1,1 @@
+"""Celery queue integration."""

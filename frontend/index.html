@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Image Prompt System</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ─────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="logo">📁 ImgPrompt</h1>
+      <p class="tagline">AI Image Prompt Manager</p>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">FOLDERS</div>
+      <div id="folder-list" class="folder-list">
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <button class="btn btn-outline" onclick="showCreateFolder()">+ New Folder</button>
+    </div>
+
+    <div id="create-folder-panel" class="create-panel hidden">
+      <input id="new-folder-name" class="input" placeholder="Folder name" />
+      <input id="new-folder-desc" class="input" placeholder="Description (optional)" />
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="createFolder()">Create</button>
+        <button class="btn btn-ghost" onclick="hideCreateFolder()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Health indicator -->
+    <div class="sidebar-footer">
+      <div id="health-dot" class="health-dot" title="System health"></div>
+      <span id="health-label" class="health-label">checking...</span>
+    </div>
+  </aside>
+
+  <!-- ── Main content ────────────────────────────── -->
+  <main class="main">
+
+    <!-- Empty state -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">🖼️</div>
+      <h2>Select a folder</h2>
+      <p>Choose a folder from the sidebar to browse images</p>
+    </div>
+
+    <!-- Folder view -->
+    <div id="folder-view" class="hidden">
+
+      <div class="topbar">
+        <div>
+          <h2 id="folder-title" class="folder-title"></h2>
+          <span id="folder-meta" class="folder-meta"></span>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="showUploadPanel()">↑ Upload Image</button>
+        </div>
+      </div>
+
+      <!-- Upload panel -->
+      <div id="upload-panel" class="upload-panel hidden">
+        <h3>Upload Image</h3>
+        <div class="form-grid">
+          <label>File
+            <input id="upload-file" type="file" accept="image/*" class="input" />
+          </label>
+          <label>Filename (display name)
+            <input id="upload-filename" class="input" placeholder="e.g. sunset.jpg" />
+          </label>
+          <label class="full">AI Prompt
+            <textarea id="upload-prompt" class="input textarea" rows="3"
+              placeholder="Describe this image for AI..."></textarea>
+          </label>
+          <label class="full">Metadata (JSON, optional)
+            <input id="upload-meta" class="input" placeholder='{"tag":"landscape"}' />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="uploadImage()">Upload</button>
+          <button class="btn btn-ghost" onclick="hideUploadPanel()">Cancel</button>
+        </div>
+        <div id="upload-status" class="upload-status hidden"></div>
+      </div>
+
+      <!-- Image grid -->
+      <div id="image-grid" class="image-grid"></div>
+      <div id="images-empty" class="images-empty hidden">
+        <p>No images in this folder yet. Upload one!</p>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ── Image detail drawer ────────────────────── -->
+  <div id="drawer-overlay" class="drawer-overlay hidden" onclick="closeDrawer()"></div>
+  <aside id="drawer" class="drawer hidden">
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+
+    <img id="drawer-img" class="drawer-img" src="" alt="" />
+
+    <div class="drawer-body">
+      <h3 id="drawer-filename" class="drawer-filename"></h3>
+      <div class="badge-row">
+        <span id="drawer-status" class="badge"></span>
+        <span id="drawer-format" class="badge badge-secondary"></span>
+      </div>
+
+      <div class="meta-table" id="drawer-meta"></div>
+
+      <!-- Prompt section -->
+      <div class="prompt-section">
+        <div class="prompt-header">
+          <span class="prompt-label">🔐 AI Prompt</span>
+          <button id="prompt-btn" class="btn btn-sm btn-outline" onclick="fetchPrompt()">
+            Reveal Prompt
+          </button>
+        </div>
+        <div id="prompt-secret-row" class="prompt-secret-row hidden">
+          <input id="prompt-secret-input" class="input input-sm"
+                 type="password" placeholder="Enter X-Prompt-Secret" />
+          <button class="btn btn-sm btn-primary" onclick="submitSecret()">Go</button>
+        </div>
+        <div id="prompt-box" class="prompt-box hidden"></div>
+        <div id="prompt-error" class="prompt-error hidden"></div>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="btn btn-danger" onclick="deleteImage()">Delete Image</button>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
